@@ -188,6 +188,11 @@ void StandaloneMode::begin(TimingCore* timingCore) {
 void StandaloneMode::process() {
     // mDNS handles requests automatically in background
 
+#if defined(BOARD_NUCLEARCOUNTER)
+    // OLED menu (buttons + redraw, self-throttled inside)
+    _boardDisplays->processNuclearCounter(_wifiManager->getSSID());
+#endif
+
     // Check for new lap data - only record during active race
     if (_raceActive && _timingCore && _timingCore->hasNewLap()) {
         LapData lap = _timingCore->getNextLap();

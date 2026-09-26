@@ -21,7 +21,11 @@
     #define RX5808_DATA_PIN     6     // GPIO6 - DATA (SPI MOSI) to RX5808
     #define RX5808_CLK_PIN      4     // GPIO4 - CLK (SPI SCK) to RX5808
     #define RX5808_SEL_PIN      7     // GPIO7 - LE (Latch Enable / SPI CS) to RX5808
-    #define MODE_SWITCH_PIN     20    // GPIO20 - Mode selection switch
+    #define MODE_SWITCH_PIN     20    // GPIO20 - Mode selection switch (also the menu SELECT button)
+    #define NC_PREV_BUTTON_PIN  21    // GPIO21 - Menu prev/up button
+    #define NC_NEXT_BUTTON_PIN  10    // GPIO10 - Menu next/down button
+    #define LCD_I2C_SDA         8     // OLED SDA (same pins as Hertz Hunter firmware)
+    #define LCD_I2C_SCL         9     // OLED SCL
     #define USE_DMA_ADC         1     // Enabled for best RSSI performance
     #define UART_BAUD_RATE      921600  // USB CDC ignores this, but set for compatibility
     #define STATUS_LED_PIN      1     // GPIO1 - Built-in status LED (if present, optional)
