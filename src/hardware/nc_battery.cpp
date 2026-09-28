@@ -6,7 +6,7 @@ NcBattery::NcBattery(uint8_t p, int16_t off)
 }
 
 // Update internal voltage state. Accounts for the 2x voltage divider
-// (identical math to Hertz Hunter Battery::updateBatteryVoltage).
+// (identical math to the NuclearCounter firmware's Battery::updateBatteryVoltage).
 //
 // NOTE: uses raw 12-bit analogRead() + linear scaling instead of the
 // framework's analogReadMilliVolts(): on this platform build (pioarduino
@@ -21,8 +21,8 @@ void NcBattery::update() {
     }
     raw /= 10;
     int pinMv = raw * 3300 / 4095;
-    // HHZ math: battery = pin voltage x 2 (voltage divider).
-    // (HHZ stores round(pinMv/100*2) in 0.1V units == pinMv*2 in mV.)
+    // NuclearCounter math: battery = pin voltage x 2 (voltage divider).
+    // (NuclearCounter stores round(pinMv/100*2) in 0.1V units == pinMv*2 in mV.)
     mv = static_cast<int16_t>(pinMv * 2 + offsetMv);
 }
 

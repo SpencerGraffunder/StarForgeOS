@@ -1,135 +1,27 @@
-# StarForge - ESP32 Drone Race Timing System
+# StarForgeOS — NuclearCounter Dual-Boot Fork
 
-**The ultimate dual-mode FPV race timer** - Works standalone with WiFi or integrates seamlessly with RotorHazard server. Built on ESP32 for maximum performance and reliability.
+This is a fork of [RaceFPV/StarForgeOS](https://github.com/RaceFPV/StarForgeOS), the StarForge ESP32 drone race timing system.
 
-> **📚 [Quick Start Guide →](docs/QUICKSTART.md)** - New user? Start here for step-by-step setup instructions, pinouts, and troubleshooting!
+## Purpose
 
-Want to contribute, learn more, or need help, reach out to our Rotorhazard discord channel [here](https://discord.gg/Ep8sqJmh9d)
+Enable **dual boot** of StarForgeOS with the **NuclearCounter** firmware (a 5.8 GHz scanner for FPV drones) on the NuclearCounter board:
 
-## 🏁 Two Modes, One Device
+- Board support for the **ESP32-S3** (NuclearCounter V3.0) and **ESP32-C3** (NuclearCounter V2.1)
+- StarForgeOS lives in the `ota_1` slot, the NuclearCounter firmware in `ota_0`; both share the same buttons, OLED, buzzer, and battery
+- Switch boot from either firmware's menu: **"Boot Scanner Mode"** in StarForgeOS, the ⭐ item in the NuclearCounter menu
 
-### 🌐 Standalone Mode - WiFi Racing
-**Perfect for casual solo racing and practice laps**
-- **Instant setup** - Just power on and connect to WiFi
-- **Beautiful web interface** - Works on any device (phone, tablet, laptop)
-- **Real-time RSSI monitoring** - Visual feedback with live graphs
-- **Audio announcements** - Lap times announced via browser speech synthesis
-- **Multi-band support** - Raceband, Fatshark, Boscam A/E frequencies
-- **No server required** - Everything runs on the ESP32-C3
+## Changes from upstream
 
+- `platformio.ini`: `nuclearcounter` (C3) and `nuclearcounter_s3` (S3) envs — board pins, 4 MB board file, dual-boot partition tables
+- Dual-boot partition tables (`partitions_dualboot.csv`, `partitions_dualboot_c3.csv`) and a 4 MB S3 board file (`boards/esp32-s3-devkitc-1-4MB.json`)
+- `src/hardware/board_displays.{h,cpp}` — NuclearCounter OLED menu: mode switching (standalone / USB node / dual-boot to scanner), battery voltage readout, navigation beeps, low-battery alarm; `bootScannerMode()`, `bootNodeMode()`, `bootStandalone()`
+- `src/hardware/nc_buzzer.{h,cpp}`, `src/hardware/nc_battery.{h,cpp}` — buzzer + battery modules matching the NuclearCounter firmware's pins and behavior
+- `src/settings/nc_settings.{h,cpp}` — reads the buzzer on/off and battery alarm threshold from the NuclearCounter firmware's NVS settings store, so both firmwares on the board share one configuration
+- `src/settings/config_loader.{h,cpp}` — NVS flag for the node/standalone boot mode
+- Standalone web UI (`data/`): RSSI graph, lap list, stats, and a notification bar
+- WiFi AP on `192.168.8.1` and `esp_wifi_set_max_tx_power(20)` (required for the S3 beacon on this hardware)
+- Boot-menu item renamed to **"Boot Scanner Mode"** (the other firmware on this board is the NuclearCounter scanner)
 
-### 🔌 RotorHazard Node Mode - Professional Racing
-**Full integration with RotorHazard server**
-- **100% compatible** - Drop-in replacement for standard RotorHazard solo nodes
-- **High-precision timing** - FreeRTOS-based real-time processing
-- **USB connectivity** - Plug and play with existing RotorHazard setups
-- **Optimized performance** - WiFi disabled for maximum timing accuracy
-
-### 🎯 **Dual-Mode Operation**
-Switch between modes instantly - no firmware changes needed. Use a simple jumper or switch to select WiFi or RotorHazard mode.
-
-## 🎮 Perfect For
-
-- **FPV racing clubs** - Standalone timing for practice sessions
-- **RotorHazard users** - Professional timing node for competitions
-- **DIY enthusiasts** - Easy to build and customize
-- **Mobile racing** - Take timing anywhere with WiFi mode
-- **Testing and development** - Debug FPV setups and frequencies
-
-## 🛠️ Quick Start
-
-**Want a fully assembled version?** Pre-built boards are available at [racefpv.io](https://racefpv.io)
-
-> **Building your own?** Check out the [DIY Hardware Guide](docs/hardware.md) for the RX5808-based version with complete wiring diagrams and PCB design tips.
->
-
-### Standalone Mode (WiFi)
-1. Power on the device
-2. Connect to WiFi network "SFOS-XXXX"
-3. Open browser to http://sfos.local
-4. Start racing!
-
-### RotorHazard Node Mode
-1. Connect via USB to your RotorHazard server
-2. Add as timing node in RotorHazard
-3. Full professional features available!
-
-## 📋 Hardware Requirements
-
-- ESP32-C3 SuperMini development board
-- RX5808 FPV receiver module  
-- Mode selection switch (optional)
-- Basic wiring tools
-
-## 🔧 Technical Details
-
-For detailed technical information, pin configurations, and setup instructions, see the `docs/` folder:
-
-- **[Setup Guide](docs/setup.md)** - Complete installation and configuration
-- **[Hardware Guide](docs/hardware.md)** - PCB design and wiring diagrams
-- **[Display Customization](docs/display_customization.md)** - UI customization options
-
-## 💾 Flashing Firmware
-
-### 🚀 Easy Way - StarForge Flash Tool (Recommended)
-
-**No command line required!** Use our cross-platform desktop app:
-
-1. Download the latest release from [GitHub Releases](https://github.com/RaceFPV/StarForgeOS/releases/latest)
-   - **macOS**: `StarForge-Flash-Tool-X.X.X.dmg`
-   - **Windows**: `StarForge-Flash-Tool-Setup-X.X.X.exe`
-2. Connect your ESP32 board via USB
-3. Select your board type and click "Flash Firmware"
-4. Done! The tool automatically downloads and flashes the latest firmware
-
-**Features**: Auto-detection, one-click flashing, progress tracking, supports all board types.
-
-📖 Full documentation: [`flash_tool/README.md`](flash_tool/README.md)
-
-### ⚙️ Manual Way - PlatformIO (For Developers)
-
-```bash
-cd StarForgeOS/
-pio run -e esp32-c3-supermini --target upload
-pio run -e esp32-c3-supermini --target uploadfs
-```
-
-**Note**: Both commands are required - one uploads the firmware, the other uploads the web interface files.
-
-Or use the Makefile for easier commands:
-
-```bash
-make                                    # Show all available commands
-make build BOARD=esp32-c3-supermini    # Build firmware
-make upload BOARD=esp32-c3-supermini   # Build and upload
-make monitor BOARD=esp32-c3-supermini  # Open serial monitor
-```
-
-## 🧪 Testing (For Developers)
-
-StarForgeOS includes comprehensive tests to ensure compatibility across all supported ESP32 board types.
-
-### Quick Validation (No Hardware Required)
-```bash
-make test  # Validates all board configs compile correctly (~4-5 minutes)
-```
-
-This runs:
-- ✅ Hardware configuration tests (pin definitions, constants)
-- ✅ WiFi functionality tests
-- ✅ Protocol unit tests (RotorHazard compatibility)
-
-### Hardware Specific Testing
-```bash
-# Test specific board with connected hardware
-make test-board BOARD=test-esp32-c3
-
-# Test RotorHazard protocol integration
-make test-rotorhazard PORT=/dev/ttyUSB0 BOARD=esp32dev
-```
-
-### Continuous Integration
-Every pull request automatically runs build validation across all board types via GitHub Actions, ensuring no breaking changes.
-
-**📖 Full testing documentation**: See [`test/README.md`](test/README.md) for complete details on the test suite, CI/CD strategy, and contribution guidelines.
-
+Everything else is upstream StarForgeOS. Build it through the
+[NuclearCounter repo's CI](https://github.com/SpencerGraffunder/NuclearCounter)
+(see that repo's README) or locally with PlatformIO.

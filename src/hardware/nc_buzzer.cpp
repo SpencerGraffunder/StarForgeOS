@@ -40,14 +40,14 @@ void NcBuzzer::doubleBuzzTask(void* parameter) {
     vTaskDelete(NULL);
 }
 
-// Start constant buzzing alarm (HHZ Buzzer::startAlarm).
+// Start constant buzzing alarm (NuclearCounter Buzzer::startAlarm).
 void NcBuzzer::startAlarm() {
     if (alarmHandle == NULL) {
         xTaskCreate(alarmTask, "nc_alarm", NC_BUZZ_STACK_SIZE, this, 1, &alarmHandle);
     }
 }
 
-// Stop constant buzzing alarm (HHZ Buzzer::stopAlarm).
+// Stop constant buzzing alarm (NuclearCounter Buzzer::stopAlarm).
 void NcBuzzer::stopAlarm() {
     if (alarmHandle != NULL) {
         vTaskDelete(alarmHandle);

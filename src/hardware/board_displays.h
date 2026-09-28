@@ -25,12 +25,13 @@ public:
     void initNuclearCounterNodeMode();
 
     // Node-mode menu: poll buttons + refresh. Rows: USB Node (home),
-    // Standalone, Boot HertzHunter. Same selectable style as the standalone
+    // Standalone, Boot Scanner Mode. Same selectable style as the standalone
     // menu. Called from NodeMode::process().
     void processNuclearCounterNode();
 
-    // Switch the boot slot to Hertz Hunter (ota_0) and reboot. Does not return.
-    void bootHertzHunter();
+    // Switch the boot slot to the scanner (NuclearCounter firmware, ota_0)
+    // and reboot. Does not return. (Called from the "Boot Scanner Mode" row.)
+    void bootScannerMode();
 
     // Enter USB node (RotorHazard) mode: set the node-mode NVS flag and reboot.
     // Does not return. (Called from standalone mode's "USB Node Mode" row.)
@@ -44,8 +45,8 @@ public:
 private:
     // Shared selectable-menu handler for both standalone and node mode.
     // Row 0 = info (standalone: WiFi IP; node: "USB Node Mode" indicator),
-    // rows 1+2 = selectable (mode switch + Boot HertzHunter). isNode picks the
-    // labels and the mode-switch action.
+    // rows 1+2 = selectable (mode switch + Boot Scanner Mode). isNode picks
+    // the labels and the mode-switch action.
     void ncMenuProcess(bool isNode);
 };
 

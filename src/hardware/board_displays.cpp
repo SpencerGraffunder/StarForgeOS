@@ -8,12 +8,12 @@ BoardDisplays::BoardDisplays() {
 #if defined(BOARD_NUCLEARCOUNTER)
 #include <Wire.h>
 #include <U8g2lib.h>
-#include "sh1306.h"      // SH1306 driver (same panels as Hertz Hunter firmware)
+#include "sh1306.h"      // SH1306 driver (same panels as the NuclearCounter firmware)
 #include <esp_ota_ops.h>
 #include "config/config_loader.h"
 #include "hardware/nc_buzzer.h"
 #include "hardware/nc_battery.h"
-#include "settings/hz_settings.h"
+#include "settings/nc_settings.h"
 
 // Raw mode-pin (SELECT) level captured at boot, for splash diagnostics.
 uint8_t BoardDisplays::bootSelectHigh = 0;
@@ -21,14 +21,14 @@ uint8_t BoardDisplays::bootSelectHigh = 0;
 // ---------------------------------------------------------------------------
 // NuclearCounter 1.3" OLED (SH1306) + 3-button menu (standalone mode only)
 //
-// Buttons (same wiring as the Hertz Hunter firmware: INPUT_PULLDOWN, the pin
-// reads HIGH while pressed):
+// Buttons (same wiring as the NuclearCounter firmware: INPUT_PULLDOWN, the
+// pin reads HIGH while pressed):
 //   prev  = NC_PREV_BUTTON_PIN (up)
 //   next  = NC_NEXT_BUTTON_PIN (down)
 //   select= MODE_SWITCH_PIN (activate / confirm)
 //
 // The panels are SH1306 with the known per-panel right-edge glass defect, so
-// this mirrors the Hertz Hunter workaround: image at x_offset 0 (native
+// this mirrors the NuclearCounter firmware's workaround: image at x_offset 0 (native
 // SH1306 layout), full-RAM clear at boot, and nothing drawn into image
 // columns 122-127 (6px right guard).
 // ---------------------------------------------------------------------------
@@ -40,25 +40,25 @@ static U8G2_SH1306_128X64_NONAME_F_HW_I2C ncDisplay(
     /* data  = */ LCD_I2C_SDA
 );
 
-// Dual-boot: switch to the Hertz Hunter app (ota_0 slot, see
-// partitions_dualboot.csv) and reboot. The shared bootloader + otadata
+// Dual-boot: switch to the scanner app (NuclearCounter firmware, ota_0 slot,
+// see partitions_dualboot.csv) and reboot. The shared bootloader + otadata
 // partition then boot the last-selected app.
-void BoardDisplays::bootHertzHunter() {
+void BoardDisplays::bootScannerMode() {
     // Tell the user what's happening before the reboot.
     ncDisplay.clearBuffer();
     ncDisplay.setFont(u8g2_font_7x13B_tf);
     ncDisplay.drawStr(2, 20, "StarForgeOS");
     ncDisplay.setFont(u8g2_font_7x13_tf);
-    ncDisplay.drawStr(2, 40, "Booting Hertz Hunter");
+    ncDisplay.drawStr(2, 40, "Booting Scanner Mode");
     ncDisplay.drawStr(2, 54, "...");
     ncDisplay.sendBuffer();
 
-    const esp_partition_t *hertz = esp_partition_find_first(
+    const esp_partition_t *scanner = esp_partition_find_first(
         ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, nullptr);
-    Serial.printf("[SFOS] bootHertzHunter: ota_0 = %s @0x%lx\n",
-                  hertz ? hertz->label : "NULL", hertz ? (unsigned long)hertz->address : 0UL);
-    if (hertz != nullptr) {
-        esp_err_t err = esp_ota_set_boot_partition(hertz);
+    Serial.printf("[SFOS] bootScannerMode: ota_0 = %s @0x%lx\n",
+                  scanner ? scanner->label : "NULL", scanner ? (unsigned long)scanner->address : 0UL);
+    if (scanner != nullptr) {
+        esp_err_t err = esp_ota_set_boot_partition(scanner);
         Serial.printf("[SFOS] esp_ota_set_boot_partition -> %s (0x%x)\n", esp_err_to_name(err), (unsigned)err);
         if (err == ESP_OK) {
             // Small delay so the last screen update can flush over I2C
@@ -69,9 +69,9 @@ void BoardDisplays::bootHertzHunter() {
     // No valid ota_0 slot: fall through, stay in StarForge.
 }
 
-// Buzzer + battery: same pins as the Hertz Hunter firmware. Buzzer on/off is
-// read from HHZ's NVS settings (configured in HHZ's menu), so both firmwares
-// on the board share one configuration.
+// Buzzer + battery: same pins as the NuclearCounter firmware. Buzzer on/off
+// is read from the NuclearCounter NVS settings (configured in its menu), so
+// both firmwares on the board share one configuration.
 static NcBuzzer ncBuzzer(BUZZER_PIN);
 static NcBattery ncBattery(BATTERY_PIN, BATTERY_VOLTAGE_OFFSET);
 
@@ -84,15 +84,16 @@ static NcBattery ncBattery(BATTERY_PIN, BATTERY_VOLTAGE_OFFSET);
 //   Row 1 (selectable) : mode switch
 //     - standalone : "USB Node Mode"  -> enter node (RotorHazard) mode
 //     - node       : "Standalone"     -> back to standalone (timer) mode
-//   Row 2 (selectable) : "Boot HertzHunter" -> dual-boot to Hertz Hunter
+//   Row 2 (selectable) : "Boot Scanner Mode" -> dual-boot to the scanner
+//                         (NuclearCounter) firmware
 //
 // The selector sits on rows 1/2 only (row 0 is display-only). It starts on
 // row 1; prev/next toggles the two selectable rows; select opens a confirm
 // overlay (select = yes, prev/next = no) that then performs the action.
 // ---------------------------------------------------------------------------
-static bool  nc_sel = 0;               // 0 = mode-switch row, 1 = HertzHunter row
+static bool  nc_sel = 0;               // 0 = mode-switch row, 1 = scanner row
 static bool  nc_confirm = false;       // confirm overlay showing
-static bool  nc_confirm_hhz = false;   // pending action is "Boot HertzHunter"
+static bool  nc_confirm_scanner = false;  // pending action is "Boot Scanner Mode"
 static bool  nc_prevHi = false, nc_nextHi = false, nc_selHi = false;
 static unsigned long nc_prevMs = 0, nc_nextMs = 0, nc_selMs = 0;
 static int   nc_lastSel = -1;          // for redraw throttling
@@ -132,7 +133,7 @@ static void ncDrawMenu(const String& infoLine, const char* switchLabel,
         ncDisplay.setFont(u8g2_font_5x7_tf);
         ncDisplay.drawStr(2, 24, infoLine.c_str());
         // Rows 1 + 2: selectable (14px boxes at y=28 and y=42, text at +10)
-        const char* labels[2] = { switchLabel, "Boot HertzHunter" };
+        const char* labels[2] = { switchLabel, "Boot Scanner Mode" };
         for (int i = 0; i < 2; i++) {
             int boxTop = 28 + i * 14;
             if (i == nc_sel) {
@@ -147,7 +148,7 @@ static void ncDrawMenu(const String& infoLine, const char* switchLabel,
         }
     }
 
-    // Battery voltage, bottom-right (HHZ style: "3.7v"). Right-aligned to
+    // Battery voltage, bottom-right (NuclearCounter style: "3.7v"). Right-aligned to
     // end at x=118 so the text never reaches the bad-glass columns (122+).
     // NOTE: set white explicitly - the row loop above may have left the
     // draw color black (selected-row text), which made the voltage
@@ -156,7 +157,7 @@ static void ncDrawMenu(const String& infoLine, const char* switchLabel,
     int mv = ncBattery.voltageMv();
     if (mv < 0) mv = 0;
     if (mv > 19900) mv = 19900;
-    int tenths = (mv + 50) / 100;   // round to 0.1V (same value HHZ shows)
+    int tenths = (mv + 50) / 100;   // round to 0.1V (same value the NuclearCounter firmware shows)
     char vbuf[8];
     snprintf(vbuf, sizeof(vbuf), "%d.%dv", tenths / 10, tenths % 10);
     ncDisplay.setFont(u8g2_font_5x7_tf);
@@ -185,7 +186,7 @@ static bool ncButtonEdge(uint8_t pin, bool &wasHigh, unsigned long &lastEdgeMs) 
 }
 
 // Common OLED bring-up, shared by standalone menu and node-mode splash.
-// (SH1306 panel workaround: mirror the Hertz Hunter Menu::begin — park the
+// (SH1306 panel workaround: mirror the NuclearCounter Menu::begin — park the
 // image at x_offset 0 so the bad rightmost glass columns are unaddressed,
 // and clear the full RAM twice so they show black.)
 static void ncCommonInit() {
@@ -217,8 +218,8 @@ void BoardDisplays::initNuclearCounter(const String& ssid) {
     ncDisplay.sendBuffer();
     nc_last_redraw = millis();
 
-    // Initialisation-complete buzz, gated by HHZ's buzzer setting.
-    if (HzSettings::buzzerEnabled()) {
+    // Initialisation-complete buzz, gated by the NuclearCounter buzzer setting.
+    if (NcSettings::buzzerEnabled()) {
         ncBuzzer.buzz();
     }
 }
@@ -226,16 +227,16 @@ void BoardDisplays::initNuclearCounter(const String& ssid) {
 // ---------------------------------------------------------------------------
 // Shared selectable-menu handler, used by both standalone and node mode.
 // isNode picks the row-0 info line, the row-1 label, and the mode-switch
-// action (row-2 "Boot HertzHunter" is the same in both):
+// action (row-2 "Boot Scanner Mode" is the same in both):
 //   node       : row0 "USB Node Mode" | row1 "Standalone"    -> bootStandalone()
 //   standalone : row0 WiFi IP        | row1 "USB Node Mode" -> bootNodeMode()
 // ---------------------------------------------------------------------------
 void BoardDisplays::ncMenuProcess(bool isNode) {
     const char* switchLabel = isNode ? "Boot Standalone"    : "Boot USB Node Mode";
-    const char* cfmMsg      = isNode ? "Start Standalone?" : "Start USB node?";
+    const char* switchCfm   = isNode ? "Start Standalone?" : "Start USB node?";
     String infoLine         = isNode ? String("USB Node Mode") : ncStandaloneInfoLine();
 
-    // Refresh battery ~2 Hz (10-sample average, HHZ's updateBatteryVoltage).
+    // Refresh battery ~2 Hz (10-sample average, same as the NuclearCounter firmware).
     static unsigned long ncBatMs = 0;
     unsigned long nowMs = millis();
     if (nowMs - ncBatMs >= 500) {
@@ -243,15 +244,15 @@ void BoardDisplays::ncMenuProcess(bool isNode) {
         ncBatMs = nowMs;
     }
 
-    // Buzzer on/off + battery alarm threshold come from HHZ's NVS settings
-    // (configured in the Hertz Hunter menu). Cached: NVS open/close per call
+    // Buzzer on/off + battery alarm threshold come from the NuclearCounter
+    // NVS settings (configured in its menu). Cached: NVS open/close per call
     // would be wasteful at 1 kHz loop rate.
     static bool ncBuzOn = false;
     static int16_t ncAlarmMv = 3600;
     static bool ncCfgInit = false;
     if (!ncCfgInit) {
-        ncBuzOn = HzSettings::buzzerEnabled();
-        ncAlarmMv = HzSettings::batteryAlarmMv();
+        ncBuzOn = NcSettings::buzzerEnabled();
+        ncAlarmMv = NcSettings::batteryAlarmMv();
         ncCfgInit = true;
         ncBattery.update();
         Serial.printf("[NCD] battery: pin=%d raw=%lu mv=%d alarmMv=%d buzOn=%d\n",
@@ -272,8 +273,9 @@ void BoardDisplays::ncMenuProcess(bool isNode) {
         }
     }
 
-    // Low-battery alarm (HHZ behavior): voltage below the HHZ-configured
-    // threshold for 1 s -> constant buzz until back above it.
+    // Low-battery alarm (NuclearCounter behavior): voltage below the
+    // NuclearCounter-configured threshold for 1 s -> constant buzz until back
+    // above it.
     // Guard: a reading under 1.5V is a disconnected/bogus ADC, not a real
     // battery - never alarm on that (prevents a broken read from beeping
     // forever).
@@ -299,8 +301,8 @@ void BoardDisplays::ncMenuProcess(bool isNode) {
 
     if (nc_confirm) {
         if (selEdge) {
-            if (nc_confirm_hhz) {
-                bootHertzHunter();   // does not return
+            if (nc_confirm_scanner) {
+                bootScannerMode();   // does not return
             } else if (isNode) {
                 bootStandalone();    // does not return
             } else {
@@ -315,7 +317,7 @@ void BoardDisplays::ncMenuProcess(bool isNode) {
             nc_sel = !nc_sel;        // toggle the two selectable rows
         }
         if (selEdge) {
-            nc_confirm_hhz = (nc_sel == 1);
+            nc_confirm_scanner = (nc_sel == 1);
             nc_confirm = true;
         }
     }
@@ -329,6 +331,8 @@ void BoardDisplays::ncMenuProcess(bool isNode) {
     nc_lastSel = nc_sel; nc_lastCfm = nc_confirm; nc_last_redraw = now;
 
     if (nc_confirm) {
+        // Confirm message depends on which row is pending.
+        const char* cfmMsg = nc_confirm_scanner ? "Start Scanner Mode?" : switchCfm;
         ncDrawMenu(infoLine, switchLabel, true, cfmMsg);
     } else {
         ncDrawMenu(infoLine, switchLabel, false, "");
@@ -338,7 +342,7 @@ void BoardDisplays::ncMenuProcess(bool isNode) {
 void BoardDisplays::initNuclearCounterNodeMode() {
     ncCommonInit();
     // Start on the first selectable row ("Boot Standalone"); confirm off.
-    nc_sel = 0; nc_confirm = false; nc_confirm_hhz = false;
+    nc_sel = 0; nc_confirm = false; nc_confirm_scanner = false;
     nc_lastSel = -1; nc_lastCfm = false;   // force an immediate first draw
     ncBattery.update();                     // first voltage reading for display
     ncDrawMenu("USB Node Mode", "Boot Standalone", false, "");

@@ -126,7 +126,8 @@ void setup() {
 
   // Dual-boot: log which slot we booted from (helps confirm the otadata
   // selection worked). Boot slot is controlled by esp_ota_set_boot_partition()
-  // — see bootHertzHunter() (to ota_0) and Hertz Hunter's bootStarForge().
+  // — see bootScannerMode() (to ota_0) and the NuclearCounter firmware's
+  // bootStarForge().
   {
     const esp_partition_t *run = esp_ota_get_running_partition();
     Serial.printf("[SFOS] booted from: %s @0x%lx\n",

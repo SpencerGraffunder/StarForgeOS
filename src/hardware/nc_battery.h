@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 // Battery voltage reader for the NuclearCounter board, ported from the
-// Hertz Hunter firmware (Battery class): same ADC pin, same 2x voltage
+// NuclearCounter firmware (Battery class): same ADC pin, same 2x voltage
 // divider scaling, same 10-sample averaging. Returns millivolts.
 class NcBattery {
 public:

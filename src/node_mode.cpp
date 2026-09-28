@@ -247,7 +247,7 @@ void NodeMode::process() {
 
 #if defined(BOARD_NUCLEARCOUNTER)
     // Node-mode OLED menu (same selectable style as the standalone menu):
-    // USB Node (home) / Standalone / Boot HertzHunter. No button holds.
+    // USB Node (home) / Standalone / Boot Scanner Mode. No button holds.
     nodeBoardDisplays.processNuclearCounterNode();
 #endif
 

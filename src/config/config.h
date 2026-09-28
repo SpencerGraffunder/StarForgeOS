@@ -35,27 +35,27 @@
     #ifndef NC_NEXT_BUTTON_PIN
     #define NC_NEXT_BUTTON_PIN  10    // GPIO10 - Menu next/down button (C3 default)
     #endif
-    #define LCD_I2C_SDA         8     // OLED SDA (same pins as Hertz Hunter firmware)
+    #define LCD_I2C_SDA         8     // OLED SDA (same pins as the NuclearCounter firmware)
     #define LCD_I2C_SCL         9     // OLED SCL
-    // Polled ADC (same as Hertz Hunter), NOT the DMA/continuous driver: the
-    // adc_continuous (DMA) driver owns ADC1 for RSSI and blocks the
+    // Polled ADC (same as the NuclearCounter firmware), NOT the DMA/continuous
+    // driver: the adc_continuous (DMA) driver owns ADC1 for RSSI and blocks the
     // adc_oneshot driver from reading the battery pin (ADC1_CH1) - oneshot
-    // reads returned 0/garbage while DMA was active. Polling is what HHZ
-    // uses for both RSSI and battery, and both work.
+    // reads returned 0/garbage while DMA was active. Polling is what the
+    // NuclearCounter firmware uses for both RSSI and battery, and both work.
     #define USE_DMA_ADC         0
     #define UART_BAUD_RATE      921600  // USB CDC ignores this, but set for compatibility
     // No status LED on the NuclearCounter hardware: GPIO1 is the battery
     // ADC input (see BATTERY_PIN below) - do NOT define STATUS_LED_PIN here.
 
-    // Buzzer + battery: same pins as the Hertz Hunter firmware (dual-boot
+    // Buzzer + battery: same pins as the NuclearCounter firmware (dual-boot
     // board, one physical pinout - NuclearCounter platformio.ini S3 env).
-    // Buzzer enable + battery alarm threshold are read from HHZ's NVS
-    // settings (see src/settings/hz_settings.cpp).
+    // Buzzer enable + battery alarm threshold are read from the
+    // NuclearCounter NVS settings (see src/settings/nc_settings.cpp).
     #ifndef BUZZER_PIN
-    #define BUZZER_PIN          2     // GPIO2 - buzzer (active high, HHZ pin)
+    #define BUZZER_PIN          2     // GPIO2 - buzzer (active high, NuclearCounter pin)
     #endif
     #ifndef BATTERY_PIN
-    #define BATTERY_PIN         1     // GPIO1 - battery ADC (2x divider, HHZ pin)
+    #define BATTERY_PIN         1     // GPIO1 - battery ADC (2x divider, NuclearCounter pin)
     #endif
     #ifndef BATTERY_VOLTAGE_OFFSET
     #define BATTERY_VOLTAGE_OFFSET 0  // mV offset added after divider scaling
@@ -76,7 +76,7 @@
     #define STATUS_LED_INVERTED 0     // Not used for WS2812 (color-based control)
     #define RSSI_HISTORY_SIZE   20000  // 20,000 samples = 6.6 minutes @ 50Hz (100 KB) - full size for C3
 #elif defined(ARDUINO_ESP32C3_DEV) || defined(CONFIG_IDF_TARGET_ESP32C3)
-    // ESP32-C3 SuperMini (Hertz-hunter compatible)
+    // ESP32-C3 SuperMini (NuclearCounter compatible)
     // Generic ESP32-C3 - Must come AFTER specific board checks
     #define RSSI_INPUT_PIN      3     // GPIO3 (ADC1_CH3) - RSSI input from RX5808
     #define RX5808_DATA_PIN     6     // GPIO6 - DATA (SPI MOSI) to RX5808

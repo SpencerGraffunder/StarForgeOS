@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-// Same timing as the Hertz Hunter firmware (Buzzer class): 20ms pulse,
+// Same timing as the NuclearCounter firmware (Buzzer class): 20ms pulse,
 // 80ms between pulses. Beeps run on FreeRTOS tasks so they never block
 // the main loop.
 #define NC_BUZZ_DURATION_MS  20
@@ -13,9 +13,9 @@
 class NcBuzzer {
 public:
     explicit NcBuzzer(uint8_t pin);
-    void buzz();        // single 20ms pulse (HHZ: button navigation)
-    void doubleBuzz();  // two pulses, 80ms apart (HHZ: confirm boot switch)
-    void startAlarm();  // constant buzz (HHZ: low battery) until stopAlarm()
+    void buzz();        // single 20ms pulse (NuclearCounter: button navigation)
+    void doubleBuzz();  // two pulses, 80ms apart (NuclearCounter: confirm boot switch)
+    void startAlarm();  // constant buzz (NuclearCounter: low battery) until stopAlarm()
     void stopAlarm();
 
 private:
