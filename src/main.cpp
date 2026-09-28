@@ -4,10 +4,14 @@
 #include "timing_core.h"
 #include "standalone_mode.h"
 #include "node_mode.h"
+#if defined(BOARD_NUCLEARCOUNTER)
+#include "hardware/board_displays.h"
+#endif
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <SPIFFS.h>
 #include <nvs_flash.h>
-#include <nvs_flash.h>
+#include <esp_ota_ops.h>
 
 // Compile-time board detection verification
 #if defined(BOARD_ESP32_S3_TOUCH)
@@ -113,13 +117,22 @@ inline bool allowSerialOutput() {
 void setup() {
   Serial.begin(UART_BAUD_RATE);
   delay(200);  // Longer delay to ensure all ESP-IDF boot messages complete
-  
+
   // Clear any bootloader/ESP-IDF messages (ESP32 ROM bootloader + ESP-IDF errors)
   // This prevents garbage data from interfering with RotorHazard node detection
   while (Serial.available()) {
     Serial.read();
   }
-  
+
+  // Dual-boot: log which slot we booted from (helps confirm the otadata
+  // selection worked). Boot slot is controlled by esp_ota_set_boot_partition()
+  // — see bootHertzHunter() (to ota_0) and Hertz Hunter's bootStarForge().
+  {
+    const esp_partition_t *run = esp_ota_get_running_partition();
+    Serial.printf("[SFOS] booted from: %s @0x%lx\n",
+                  run ? run->label : "?", run ? (unsigned long)run->address : 0UL);
+  }
+
   // Initialize NVS (Non-Volatile Storage) early
   // This is needed for WiFi calibration and other system settings
   // If NVS was erased (e.g., by full chip erase), re-initialize it
@@ -143,7 +156,15 @@ void setup() {
     g_rx5808_data_pin = customConfig.rx5808_data_pin;
     g_rx5808_clk_pin = customConfig.rx5808_clk_pin;
     g_rx5808_sel_pin = customConfig.rx5808_sel_pin;
+#if defined(BOARD_NUCLEARCOUNTER)
+    // NuclearCounter has fixed hardware wiring — the mode/SELECT pin is set
+    // by build_flags (MODE_SWITCH_PIN), NOT by NVS. Ignore any stored value so
+    // a stale NVS pin can't break mode detection or the in-app switch.
+    Serial.printf("[NCD] NVS mode_switch_pin=%d IGNORED (using build-flag %d)\n",
+                  (int)customConfig.mode_switch_pin, (int)MODE_SWITCH_PIN);
+#else
     g_mode_switch_pin = customConfig.mode_switch_pin;  // Load BEFORE mode detection
+#endif
     
     #if ENABLE_POWER_BUTTON
     if (customConfig.power_button_pin > 0) {
@@ -193,21 +214,37 @@ void setup() {
       requested_mode = MODE_STANDALONE;  // Ensure both are in sync
     #endif
   #else
-    // Non-touch boards: Initialize mode selection pin with internal pull-up
-    // Note: g_mode_switch_pin may have been overridden by custom pins above
-    pinMode(g_mode_switch_pin, INPUT_PULLUP);
-    
+    // Non-touch boards: initialize mode selection pin.
+    // Note: g_mode_switch_pin may have been overridden by custom pins above.
+    #if defined(BOARD_NUCLEARCOUNTER)
+      // NuclearCounter: button drives the pin HIGH when pressed (to 3V3),
+      // floating when released -> needs a PULLDOWN so released reads LOW.
+      pinMode(g_mode_switch_pin, INPUT_PULLDOWN);
+    #else
+      // Default boards: button drives the pin LOW (GND) when pressed,
+      // floating when released -> PULLUP so released reads HIGH.
+      pinMode(g_mode_switch_pin, INPUT_PULLUP);
+    #endif
+
     // Determine initial mode BEFORE any serial output
     bool initial_switch_state = digitalRead(g_mode_switch_pin);
 
     #if defined(BOARD_NUCLEARCOUNTER)
-      // NuclearCounter: Button brings pin HIGH when pressed (opposite of default behavior)
-      // HIGH (button pressed) = STANDALONE, LOW (button not pressed) = ROTORHAZARD
-      current_mode = (initial_switch_state == HIGH) ? MODE_STANDALONE : MODE_ROTORHAZARD;
+      // Standalone (timer) mode is the DEFAULT. USB node mode is opt-in: the
+      // "USB Node Mode" item in the standalone OLED menu sets a persistent NVS
+      // flag (ConfigLoader::setBootNodeMode) and reboots into node mode. Press
+      // NEXT in node mode to return to standalone (clears the flag).
+      current_mode = ConfigLoader::shouldBootNodeMode() ? MODE_ROTORHAZARD : MODE_STANDALONE;
+      BoardDisplays::bootSelectHigh = (current_mode == MODE_ROTORHAZARD) ? 1 : 0;
     #else
       // Default behavior: LOW (GND) = STANDALONE, HIGH/floating = ROTORHAZARD
       current_mode = (initial_switch_state == LOW) ? MODE_STANDALONE : MODE_ROTORHAZARD;
     #endif
+#if defined(NCD_DEBUG)
+    Serial.printf("[NCD] mode pin %d state=%d -> %s\n",
+                  g_mode_switch_pin, (int)initial_switch_state,
+                  current_mode == MODE_STANDALONE ? "STANDALONE" : "ROTORHAZARD(node)");
+#endif
   #endif
   
   // Now that mode is determined, we can safely print status messages in standalone mode

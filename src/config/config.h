@@ -21,15 +21,45 @@
     #define RX5808_DATA_PIN     6     // GPIO6 - DATA (SPI MOSI) to RX5808
     #define RX5808_CLK_PIN      4     // GPIO4 - CLK (SPI SCK) to RX5808
     #define RX5808_SEL_PIN      7     // GPIO7 - LE (Latch Enable / SPI CS) to RX5808
-    #define MODE_SWITCH_PIN     20    // GPIO20 - Mode selection switch (also the menu SELECT button)
-    #define NC_PREV_BUTTON_PIN  21    // GPIO21 - Menu prev/up button
-    #define NC_NEXT_BUTTON_PIN  10    // GPIO10 - Menu next/down button
+    // Mode selection switch = the menu SELECT button. Pin differs per target:
+    // C3 = 20, S3 = 11 (set via build_flags).
+    #ifndef MODE_SWITCH_PIN
+    #define MODE_SWITCH_PIN     20    // GPIO20 (C3 default)
+    #endif
+    // Prev/Next button pins are set per-target in platformio.ini build_flags
+    // (C3: prev=21 next=10 ; S3: prev=10 next=21 — they're swapped between the
+    // two boards). Defaults here match the C3 layout.
+    #ifndef NC_PREV_BUTTON_PIN
+    #define NC_PREV_BUTTON_PIN  21    // GPIO21 - Menu prev/up button (C3 default)
+    #endif
+    #ifndef NC_NEXT_BUTTON_PIN
+    #define NC_NEXT_BUTTON_PIN  10    // GPIO10 - Menu next/down button (C3 default)
+    #endif
     #define LCD_I2C_SDA         8     // OLED SDA (same pins as Hertz Hunter firmware)
     #define LCD_I2C_SCL         9     // OLED SCL
-    #define USE_DMA_ADC         1     // Enabled for best RSSI performance
+    // Polled ADC (same as Hertz Hunter), NOT the DMA/continuous driver: the
+    // adc_continuous (DMA) driver owns ADC1 for RSSI and blocks the
+    // adc_oneshot driver from reading the battery pin (ADC1_CH1) - oneshot
+    // reads returned 0/garbage while DMA was active. Polling is what HHZ
+    // uses for both RSSI and battery, and both work.
+    #define USE_DMA_ADC         0
     #define UART_BAUD_RATE      921600  // USB CDC ignores this, but set for compatibility
-    #define STATUS_LED_PIN      1     // GPIO1 - Built-in status LED (if present, optional)
-    #define STATUS_LED_INVERTED 0     // LED active state (0 = HIGH is ON, 1 = LOW is ON)
+    // No status LED on the NuclearCounter hardware: GPIO1 is the battery
+    // ADC input (see BATTERY_PIN below) - do NOT define STATUS_LED_PIN here.
+
+    // Buzzer + battery: same pins as the Hertz Hunter firmware (dual-boot
+    // board, one physical pinout - NuclearCounter platformio.ini S3 env).
+    // Buzzer enable + battery alarm threshold are read from HHZ's NVS
+    // settings (see src/settings/hz_settings.cpp).
+    #ifndef BUZZER_PIN
+    #define BUZZER_PIN          2     // GPIO2 - buzzer (active high, HHZ pin)
+    #endif
+    #ifndef BATTERY_PIN
+    #define BATTERY_PIN         1     // GPIO1 - battery ADC (2x divider, HHZ pin)
+    #endif
+    #ifndef BATTERY_VOLTAGE_OFFSET
+    #define BATTERY_VOLTAGE_OFFSET 0  // mV offset added after divider scaling
+    #endif
     #define RSSI_HISTORY_SIZE   20000  // 20,000 samples = 6.6 minutes @ 50Hz (100 KB) - full size for C3
 #elif defined(BOARD_ESP32_C3_ZERO)
     // ESP32-C3 Zero - Must come BEFORE generic ESP32-C3 check (more specific)

@@ -1,6 +1,12 @@
 #include "node_mode.h"
 #include "config/config.h"
 #include <string.h>
+#if defined(BOARD_NUCLEARCOUNTER)
+#include "hardware/board_displays.h"
+
+// Shared display instance for node mode (same object used in NodeMode::begin).
+static BoardDisplays nodeBoardDisplays;
+#endif
 #if defined(STATUS_LED_PIN)
 #include "hardware/status_led.h"
 #endif
@@ -210,6 +216,12 @@ void NodeMode::begin(TimingCore* timingCore) {
     if (_timingCore) {
         _timingCore->setActivated(true);
     }
+
+#if defined(BOARD_NUCLEARCOUNTER)
+    // Show a "USB Node Mode" splash so the OLED isn't a blank black screen
+    // while the board acts as a RotorHazard USB lap timer.
+    nodeBoardDisplays.initNuclearCounterNodeMode();
+#endif
     
     // Initialize status LED - slow blink in RotorHazard node mode (every 2 seconds)
 #if defined(STATUS_LED_PIN)
@@ -232,7 +244,13 @@ void NodeMode::process() {
         _statusLed->update(millis());
     }
 #endif
-    
+
+#if defined(BOARD_NUCLEARCOUNTER)
+    // Node-mode OLED menu (same selectable style as the standalone menu):
+    // USB Node (home) / Standalone / Boot HertzHunter. No button holds.
+    nodeBoardDisplays.processNuclearCounterNode();
+#endif
+
     // Handle incoming serial data
     handleSerialInput();
     

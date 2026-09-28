@@ -1,0 +1,14 @@
+# Dual-boot partition table for the NuclearCounter C3 board (V2.1, ESP32-C3)
+#
+# Matches the layout already on the C3 board (read from flash @0x8000):
+#   ota_0 = Hertz Hunter (V2.1), ota_1 = StarForgeOS.
+# NOTE: differs from the S3 table — the C3 app slots are 1280KB (0x140000),
+# so ota_1 sits at 0x150000 (S3 uses 1568KB slots -> ota_1 @ 0x1A0000).
+# Keep in sync with what is actually flashed on the C3 board.
+#
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+otadata,  data, ota,     0xE000,   0x2000,
+ota_0,    app,  ota_0,   0x10000,  0x140000,
+ota_1,    app,  ota_1,   0x150000, 0x140000,
+spiffs,   data, spiffs,  0x290000, 0x160000,

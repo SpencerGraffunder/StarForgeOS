@@ -68,3 +68,6 @@ flash_tool/npm-debug.log*
 flash_tool/yarn-debug.log*
 flash_tool/yarn-error.log*
 
+
+# IDE generated
+compile_commands.json

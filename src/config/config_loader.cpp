@@ -173,3 +173,26 @@ bool ConfigLoader::hasCustomConfig() {
     return (enabled != 0);
 }
 
+bool ConfigLoader::shouldBootNodeMode() {
+    Preferences prefs;
+    // Read-write mode: avoids a Preferences error if the namespace is absent
+    // (fresh flash). Default 0 = standalone mode.
+    if (!prefs.begin(NVS_NAMESPACE, false)) {
+        return false;
+    }
+    uint8_t node = prefs.getUChar("boot_node", 0);
+    prefs.end();
+    return (node != 0);
+}
+
+void ConfigLoader::setBootNodeMode(bool node) {
+    Preferences prefs;
+    if (!prefs.begin(NVS_NAMESPACE, false)) {
+        Serial.println("ConfigLoader: Failed to open NVS - could not set boot mode");
+        return;
+    }
+    prefs.putUChar("boot_node", node ? 1 : 0);
+    prefs.end();
+    Serial.printf("ConfigLoader: boot mode -> %s\n", node ? "USB node" : "standalone");
+}
+

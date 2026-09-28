@@ -42,13 +42,27 @@ bool WiFiManager::setupAP() {
     WiFi.setSleep(false);
 
     // Configure AP IP settings
+    // 192.168.8.x (NOT 192.168.4.x) — 192.168.4.x collides with the home
+    // network (DeerFiber 192.168.4.0/22) and breaks the Mac's routing to it.
     WiFi.softAPConfig(
-        IPAddress(192, 168, 4, 1),
-        IPAddress(192, 168, 4, 1),
+        IPAddress(192, 168, 8, 1),
+        IPAddress(192, 168, 8, 1),
         IPAddress(255, 255, 255, 0)
     );
 
     delay(200); // Delay 200ms to ensure the AP is ready
+
+    // DIAGNOSTIC: force MAX TX power (20 dBm). The S3's NVS is blank, so its
+    // default TX power may be low -> beacon too weak to reach the Mac. Set
+    // after WiFi is initialized (mode set) but before softAP() so it applies.
+    {
+      int8_t txp = -127;
+      esp_wifi_get_max_tx_power(&txp);
+      Serial.printf("[NCD] AP TX power before=%d dBm\n", txp);
+      esp_err_t e = esp_wifi_set_max_tx_power(20);
+      esp_wifi_get_max_tx_power(&txp);
+      Serial.printf("[NCD] AP TX power set->20 (err=%d) now=%d dBm\n", e, txp);
+    }
 
     Serial.printf("Starting AP with SSID: %s\n", _apSSID.c_str());
 

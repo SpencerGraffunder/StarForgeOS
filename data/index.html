@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>StarForge Race Timer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/style.css?v=5">
+    <link rel="stylesheet" href="/style.css?v=6">
 </head>
 <body>
     <div class="container">
@@ -78,6 +78,12 @@
             </div>
         </div>
         
+        <div class="notification-section">
+            <div class="notification-bar" id="notificationBar">
+                <span id="notificationText"></span>
+            </div>
+        </div>
+        
         <div class="control-panel">
             <div class="controls">
                 <button id="startBtn" onclick="startRace()" class="btn btn-primary">▶ Start Race</button>
@@ -102,6 +108,10 @@
                     <div class="stat-number" id="bestLap">--:--</div>
                 </div>
                 <div class="stat-card">
+                    <div class="stat-label">Best 3 Laps</div>
+                    <div class="stat-number" id="best3Lap">--:--</div>
+                </div>
+                <div class="stat-card">
                     <div class="stat-label">Last Lap</div>
                     <div class="stat-number" id="lastLap">--:--</div>
                 </div>
@@ -121,7 +131,7 @@
         </div>
     </div>
 
-    <script src="/app.js?v=5"></script>
+    <script src="/app.js?v=6"></script>
     <script>
         // Initialize thresholds from server on page load
         async function initializeThresholds() {

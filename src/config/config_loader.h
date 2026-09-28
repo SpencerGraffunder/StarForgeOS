@@ -40,6 +40,13 @@ public:
     // Check if custom config exists and is enabled
     static bool hasCustomConfig();
     
+    // Boot-mode preference (NuclearCounter): true = boot into USB node mode,
+    // false = boot into standalone (timer) mode. Defaults to false (standalone).
+    // The standalone OLED menu's "USB Node Mode" item sets this and reboots;
+    // pressing NEXT in node mode clears it and reboots back to standalone.
+    static bool shouldBootNodeMode();
+    static void setBootNodeMode(bool node);
+    
 private:
     static const char* NVS_NAMESPACE;  // NVS namespace for pin config
 };

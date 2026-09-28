@@ -259,7 +259,7 @@ void WebServerManager::begin(TimingCore* timingCore, SettingsManager* settingsMa
     Serial.printf("IP address: %s\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("mDNS hostname: %s.local\n", MDNS_HOSTNAME);
     Serial.printf("Server listening on port 80\n");
-    Serial.println("Open browser to http://192.168.4.1 or http://sfos.local");
+    Serial.println("Open browser to http://192.168.8.1 or http://sfos.local");
 }
 
 

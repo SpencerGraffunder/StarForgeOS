@@ -890,7 +890,12 @@ void TimingCore::resumeFromPause(bool wasActive) {
 }
 
 void TimingCore::setActivated(bool active) {
-  if (xSemaphoreTake(timing_mutex, portMAX_DELAY)) {
+  // Use a bounded wait, NOT portMAX_DELAY: the timing task can hold this
+  // mutex for a long time (RSSI buffer malloc / tune-wait), and a blocking
+  // take here hung setup() forever, killing the Arduino loop (buttons dead,
+  // menu frozen). A short timeout lets boot always complete; the flag is
+  // (re)set by the caller or the task is already running.
+  if (xSemaphoreTake(timing_mutex, pdMS_TO_TICKS(100))) {
     state.activated = active;
     if (active && race_start_time_ms == 0) {
       // Set race start time when first activated

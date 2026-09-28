@@ -463,6 +463,25 @@ class RaceTimer {
         const bestLap = validLaps.length > 0 ? 
             Math.min(...validLaps.map(lap => lap.lap_time_ms)) : null;
         
+        // Best 3 consecutive laps: minimum total across every window of 3
+        // consecutive valid laps. Recomputed on every lap — a window only
+        // becomes the new best if it's better (faster) than the current best.
+        let best3 = null;
+        if (validLaps.length >= 3) {
+            let windowSum = validLaps[0].lap_time_ms + validLaps[1].lap_time_ms + validLaps[2].lap_time_ms;
+            best3 = windowSum;
+            for (let i = 3; i < validLaps.length; i++) {
+                windowSum += validLaps[i].lap_time_ms - validLaps[i - 3].lap_time_ms;
+                if (windowSum < best3) {
+                    best3 = windowSum;
+                }
+            }
+        }
+        const best3El = document.getElementById('best3Lap');
+        if (best3El) {
+            best3El.textContent = (best3 !== null && best3 > 0) ? this.formatTime(best3) : '--:--';
+        }
+        
         lapList.innerHTML = this.laps.slice().reverse().map((lap, index) => {
             const lapNumber = this.laps.length - index;
             const isBest = lap.lap_time_ms === bestLap && lap.lap_time_ms > 0;
@@ -894,6 +913,30 @@ class RaceTimer {
 // Global functions for button handlers
 let raceTimer;
 
+// Notification area (replaces the old full-screen countdown/finish overlays)
+let notifHideTimer = null;
+function showNotification(text, kind = 'notif-orange', holdMs = 0) {
+    const bar = document.getElementById('notificationBar');
+    const txt = document.getElementById('notificationText');
+    if (!bar || !txt) return;
+    txt.textContent = text;
+    txt.className = kind;
+    bar.classList.add('active');
+    // Re-trigger the pulse animation (same as the old overlay)
+    txt.style.animation = 'none';
+    setTimeout(() => { txt.style.animation = 'pulse 0.5s ease-in-out'; }, 10);
+    if (notifHideTimer) {
+        clearTimeout(notifHideTimer);
+        notifHideTimer = null;
+    }
+    if (holdMs > 0) {
+        notifHideTimer = setTimeout(() => {
+            bar.classList.remove('active');
+            notifHideTimer = null;
+        }, holdMs);
+    }
+}
+
 function startRace() {
     console.log('Start race clicked - beginning countdown');
     
@@ -929,43 +972,11 @@ function startRace() {
         });
     }
     
-    // Countdown sequence
+    // Countdown sequence (shown in the notification area, same timing as before)
     async function countdown() {
-        // Show countdown overlay
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            font-family: 'Courier New', monospace;
-        `;
-        
-        const countdownText = document.createElement('div');
-        countdownText.style.cssText = `
-            font-size: 120px;
-            font-weight: bold;
-            color: #ff7b00;
-            text-shadow: 0 0 30px #ff7b00, 0 0 60px #ff7b00;
-            animation: pulse 0.5s ease-in-out;
-        `;
-        
-        overlay.appendChild(countdownText);
-        document.body.appendChild(overlay);
-        
         // Countdown: 5, 4, 3, 2, 1
         for (let i = 5; i >= 1; i--) {
-            countdownText.textContent = i;
-            countdownText.style.animation = 'none';
-            setTimeout(() => {
-                countdownText.style.animation = 'pulse 0.5s ease-in-out';
-            }, 10);
+            showNotification(String(i), 'notif-orange');
             
             // All countdown beeps are the same
             await playBeep(0.15, 800);
@@ -974,14 +985,13 @@ function startRace() {
         }
         
         // Show "GO!"
-        countdownText.textContent = 'GO!';
-        countdownText.style.color = '#00ff88';
-        countdownText.style.textShadow = '0 0 30px #00ff88, 0 0 60px #00ff88';
+        showNotification('GO!', 'notif-green');
         await playBeep(0.6, 1200);
         
-        // Remove overlay after a brief moment
+        // Hide after a brief moment
         await new Promise(resolve => setTimeout(resolve, 500));
-        document.body.removeChild(overlay);
+        const bar = document.getElementById('notificationBar');
+        if (bar) bar.classList.remove('active');
         
         // Start recording race data
         if (raceTimer) {
@@ -1026,81 +1036,30 @@ function stopRace() {
         raceTimer.stopRecording();
     }
 
-    // Show "Race Finished" overlay
-    async function showRaceFinishedOverlay() {
-        // Create overlay
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            font-family: 'Courier New', monospace;
-            opacity: 0;
-            transition: opacity 0.3s ease-in;
-        `;
+    // Show "RACE FINISHED" in the notification area (same timing as before)
+    showNotification('RACE FINISHED', 'notif-orange', 1500);
+    
+    // Optional: play a brief sound effect
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
         
-        const finishedText = document.createElement('div');
-        finishedText.style.cssText = `
-            font-size: 100px;
-            font-weight: bold;
-            color: #ff7b00;
-            text-shadow: 0 0 40px #ff7b00, 0 0 80px #ff7b00, 0 0 120px rgba(255, 123, 0, 0.5);
-            text-align: center;
-            animation: raceFinishedPulse 0.6s ease-in-out;
-        `;
-        finishedText.textContent = 'RACE FINISHED';
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
         
-        overlay.appendChild(finishedText);
-        document.body.appendChild(overlay);
+        oscillator.frequency.value = 600;
+        oscillator.type = 'sine';
         
-        // Fade in
-        setTimeout(() => {
-            overlay.style.opacity = '1';
-        }, 10);
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
         
-        // Optional: play a brief sound effect
-        try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = 600;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.4);
-        } catch (e) {
-            // Audio context may not be available, ignore
-            console.log('Audio not available for finish sound');
-        }
-        
-        // Show for 1.5 seconds, then fade out
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        overlay.style.transition = 'opacity 0.4s ease-out';
-        overlay.style.opacity = '0';
-        
-        await new Promise(resolve => setTimeout(resolve, 400));
-        if (document.body.contains(overlay)) {
-            document.body.removeChild(overlay);
-        }
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.4);
+    } catch (e) {
+        // Audio context may not be available, ignore
+        console.log('Audio not available for finish sound');
     }
-
-    // Start the overlay animation
-    showRaceFinishedOverlay();
 
     fetch('/api/stop_race', {
         method: 'POST'

@@ -888,3 +888,39 @@ body.race-stopped .control-panel {
 .lap-item.new-lap {
     animation: lapFlash 1s ease-in-out;
 }
+
+/* ============ Notification area (countdown / race messages) ============ */
+.notification-section {
+    padding: 0 12px;
+    margin-bottom: 10px;
+}
+.notification-bar {
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 14, 39, 0.85);
+    border: 1px solid rgba(255, 123, 0, 0.18);
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+}
+#notificationText {
+    font-size: 30px;
+    font-weight: bold;
+    letter-spacing: 6px;
+    opacity: 0;
+    transition: opacity 0.25s ease-in;
+    white-space: nowrap;
+}
+.notification-bar.active #notificationText {
+    opacity: 1;
+}
+#notificationText.notif-orange {
+    color: #ff7b00;
+    text-shadow: 0 0 15px rgba(255, 123, 0, 0.9), 0 0 30px rgba(255, 123, 0, 0.5);
+}
+#notificationText.notif-green {
+    color: #00ff88;
+    text-shadow: 0 0 15px rgba(0, 255, 136, 0.9), 0 0 30px rgba(0, 255, 136, 0.5);
+}
