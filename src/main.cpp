@@ -161,7 +161,7 @@ void setup() {
     // NuclearCounter has fixed hardware wiring — the mode/SELECT pin is set
     // by build_flags (MODE_SWITCH_PIN), NOT by NVS. Ignore any stored value so
     // a stale NVS pin can't break mode detection or the in-app switch.
-    Serial.printf("[NCD] NVS mode_switch_pin=%d IGNORED (using build-flag %d)\n",
+    Serial.printf("NVS mode_switch_pin=%d ignored (fixed hardware wiring, using %d)\n",
                   (int)customConfig.mode_switch_pin, (int)MODE_SWITCH_PIN);
 #else
     g_mode_switch_pin = customConfig.mode_switch_pin;  // Load BEFORE mode detection
@@ -241,11 +241,6 @@ void setup() {
       // Default behavior: LOW (GND) = STANDALONE, HIGH/floating = ROTORHAZARD
       current_mode = (initial_switch_state == LOW) ? MODE_STANDALONE : MODE_ROTORHAZARD;
     #endif
-#if defined(NCD_DEBUG)
-    Serial.printf("[NCD] mode pin %d state=%d -> %s\n",
-                  g_mode_switch_pin, (int)initial_switch_state,
-                  current_mode == MODE_STANDALONE ? "STANDALONE" : "ROTORHAZARD(node)");
-#endif
   #endif
   
   // Now that mode is determined, we can safely print status messages in standalone mode

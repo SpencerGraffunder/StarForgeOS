@@ -52,17 +52,11 @@ bool WiFiManager::setupAP() {
 
     delay(200); // Delay 200ms to ensure the AP is ready
 
-    // DIAGNOSTIC: force MAX TX power (20 dBm). The S3's NVS is blank, so its
-    // default TX power may be low -> beacon too weak to reach the Mac. Set
-    // after WiFi is initialized (mode set) but before softAP() so it applies.
-    {
-      int8_t txp = -127;
-      esp_wifi_get_max_tx_power(&txp);
-      Serial.printf("[NCD] AP TX power before=%d dBm\n", txp);
-      esp_err_t e = esp_wifi_set_max_tx_power(20);
-      esp_wifi_get_max_tx_power(&txp);
-      Serial.printf("[NCD] AP TX power set->20 (err=%d) now=%d dBm\n", e, txp);
-    }
+    // Force MAX TX power (20 dBm). The board's NVS holds no WiFi PHY
+    // calibration, so the driver's default TX power is too low and the AP
+    // beacon is invisible to other devices. Must be set after WiFi.mode()
+    // and before softAP() to take effect.
+    esp_wifi_set_max_tx_power(20);
 
     Serial.printf("Starting AP with SSID: %s\n", _apSSID.c_str());
 

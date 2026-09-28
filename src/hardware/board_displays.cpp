@@ -255,9 +255,6 @@ void BoardDisplays::ncMenuProcess(bool isNode) {
         ncAlarmMv = NcSettings::batteryAlarmMv();
         ncCfgInit = true;
         ncBattery.update();
-        Serial.printf("[NCD] battery: pin=%d raw=%lu mv=%d alarmMv=%d buzOn=%d\n",
-                      BATTERY_PIN, (unsigned long)analogRead(BATTERY_PIN),
-                      ncBattery.voltageMv(), (int)ncAlarmMv, (int)ncBuzOn);
     }
 
     bool prevEdge = ncButtonEdge(NC_PREV_BUTTON_PIN, nc_prevHi, nc_prevMs);
@@ -292,12 +289,6 @@ void BoardDisplays::ncMenuProcess(bool isNode) {
             ncBuzzer.stopAlarm();
         }
     }
-#if NCD_DEBUG
-    if (prevEdge || nextEdge || selEdge) {
-        Serial.printf("[NCD] menu: prev=%d next=%d sel=%d row=%d cfm=%d\n",
-                      prevEdge, nextEdge, selEdge, nc_sel, nc_confirm);
-    }
-#endif
 
     if (nc_confirm) {
         if (selEdge) {
